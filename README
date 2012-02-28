@@ -1,0 +1,18 @@
+Parsar - Parse and summarize sar logs into a more human-readable and useful format
+
+Reads sar logs from /var/log/sa and outputs:
+TIMESTAMP     CPU%   IOWAIT%    MEM USED    LOAD     SWAP USED
+
+Default is to summarize data hourly.  Can use --daily for daily, or --raw for 10 minutes.
+You can use --peak to include the highest measurement during the time interval, as well as the average, or --peakonly to show only the highest measurement.
+
+Load average data uses 5 minute LA.
+
+usage: parsar [options]
+--daily/-d       Print daily summaries, rather than hourly
+--raw/-r         Print 10-minute raw data, rather than hourly
+--peak/-p        Print peak usage for each interval
+--peakonly/-o    Print only peak usage data
+--help/-h        Print this help message
+--verbose/-v     Loquacious, elaborative output
+
