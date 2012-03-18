@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 # parsar
 # parse sar logs into a more readable, condensed format
-# v0.21
+# v0.30
 # Jonathan Kelly (jonathan.kelly@rackspace.com)
 
 =pod
@@ -67,7 +67,8 @@ if ( $args{help} ) {
 # get list of sar files
 # TODO: customizable log directory via config file
 my @logs = glob("/var/log/sa/sa[0-9]*");
-if ( ! @logs ) { die "No sar logs found in /var/log/sa/sa*\n"; }
+if ( ! @logs ) { @logs = glob("/var/log/sysstat/sa[0-9]*"); }
+if ( ! @logs ) { die "No sar logs found in /var/log/sa/sa* or /var/log/sysstat/sa*\n"; }
 if ( $args{verbose} ) {
     print "Found logs: \n";
     for ( @logs ) {
@@ -83,10 +84,10 @@ for ( @logs ) {
     if ( $args{verbose} ) { print "Processing: $log\n"; }
     my $FH;
     # get CPU data
-    open( $FH, "sar -f $log|egrep -v \"CPU|^\$|RESTART|Average\"|" );
+    open( $FH, "sar -f $log|egrep -v \"iowait|^\$|RESTART|Average\"|" );
     # get the day in mm/dd format, since I am into the whole brevity thing
     my $line = <$FH>;
-    $line =~ /\s+(\d+\/\d+)\/\d+$/;
+    $line =~ /\s+(\d+\/\d+)\/\d+/;
     $date = $1;
     chomp($date);
     while ( <$FH> ) {
@@ -136,7 +137,6 @@ for ( @logs ) {
             $time = $1 . $2;
         }
         $data{$date}{$time}{mem} = ($mused - $mbuf - $mcache) / 1024.0; # in Megs
-        #$data{$date}{$time}{} = ($mfree + $mbuf + $mcache) / 1024.0; # in Megs
         $data{$date}{$time}{swap} = $swap / 1024.0; # in Megs
     }
     close($FH);

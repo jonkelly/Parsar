@@ -15,4 +15,3 @@ usage: parsar [options]
 --peakonly/-o    Print only peak usage data
 --help/-h        Print this help message
 --verbose/-v     Loquacious, elaborative output
-
