@@ -116,30 +116,90 @@ for ( @logs ) {
     close($FH);
 
     # get memory data
-    open( $FH, "sar -r -f $log|egrep -v \"mem|^\$|Average|RESTART|Linux\"|" );
-    while ( <$FH> ) {
-        my $line = $_;
-        my ($time, $ampm, $mfree, $mused, $junk, $mbuf, $mcache, $jnk, $swap);
-        if ( $line =~ m/(AM|PM)/ ) {
-            ($time, $ampm, $mfree, $mused, $junk, $mbuf, $mcache, $jnk, $swap) =
-            split(/\s+/, $line);
-            # convert time and ampm to military
-            $time =~ /(\d+):(\d+)/;
-            $time = $1 . $2;
-            # special case for 12AM and 12PM, 12AM=0000, 12pm=1200
-            if ( $time <= 1259 && $time >= 1200 ) { $time -= 1200; }
-            if ( $ampm eq "PM" ) { $time += 1200; }
+    # two possible formats, depending on version
+    # this fix is kinda lame, pardon the berl
+    my $has_swap_data = `sar -r|grep swp|wc -l`;
+    chomp($has_swap_data);
+    if ( $has_swap_data eq 0 ) {
+        open( $FH, "sar -r -f $log|egrep -v \"mem|^\$|Average|RESTART|Linux\"|" );
+        while ( <$FH> ) {
+            my $line = $_;
+            my ($time, $ampm, $mfree, $mused, $junk, $mbuf, $mcache, @junk);
+            if ( $line =~ m/(AM|PM)/ ) {
+                ($time, $ampm, $mfree, $mused, $junk, $mbuf, $mcache, @junk) =
+                split(/\s+/, $line);
+                # convert time and ampm to military
+                $time =~ /(\d+):(\d+)/;
+                $time = $1 . $2;
+                # special case for 12AM and 12PM, 12AM=0000, 12pm=1200
+                if ( $time <= 1259 && $time >= 1200 ) { $time -= 1200; }
+                if ( $ampm eq "PM" ) { $time += 1200; }
+            }
+            else {
+                ($time, $mfree, $mused, $junk, $mbuf, $mcache, @junk) =
+                split(/\s+/, $line);
+                $time =~ /(\d+):(\d+)/;
+                $time = $1 . $2;
+            }
+            $data{$date}{$time}{mem} = ($mused - $mbuf - $mcache) / 1024.0; # in Megs
         }
-        else {
-            ($time, $mfree, $mused, $junk, $mbuf, $mcache, $jnk, $swap) =
-            split(/\s+/, $line);
-            $time =~ /(\d+):(\d+)/;
-            $time = $1 . $2;
+        close($FH);
+        # now get swap data
+        open( $FH, "sar -S -f $log|egrep -v \"swp|^\$|Average|RESTART|Linux\"|" );
+        while ( <$FH> ) {
+            my $line = $_;
+            my ($time, $ampm, $junk, $swap, @junk);
+            if ( $line =~ m/(AM|PM)/ ) {
+                ($time, $ampm, $junk, $swap, @junk) =
+                split(/\s+/, $line);
+                # convert time and ampm to military
+                $time =~ /(\d+):(\d+)/;
+                $time = $1 . $2;
+                # special case for 12AM and 12PM, 12AM=0000, 12pm=1200
+                if ( $time <= 1259 && $time >= 1200 ) { $time -= 1200; }
+                if ( $ampm eq "PM" ) { $time += 1200; }
+            }
+            else {
+                ($time, $junk, $swap, @junk) =
+                split(/\s+/, $line);
+                $time =~ /(\d+):(\d+)/;
+                $time = $1 . $2;
+            }
+            $data{$date}{$time}{swap} = $swap / 1024.0; # in Megs
         }
-        $data{$date}{$time}{mem} = ($mused - $mbuf - $mcache) / 1024.0; # in Megs
-        $data{$date}{$time}{swap} = $swap / 1024.0; # in Megs
+        close($FH);        
     }
-    close($FH);
+    elsif ( $has_swap_data ge 1 ) {
+        open( $FH, "sar -r -f $log|egrep -v \"mem|^\$|Average|RESTART|Linux\"|" );
+        while ( <$FH> ) {
+            my $line = $_;
+            my ($time, $ampm, $mfree, $mused, $junk, $mbuf, $mcache, $jnk, $swap);
+            if ( $line =~ m/(AM|PM)/ ) {
+                ($time, $ampm, $mfree, $mused, $junk, $mbuf, $mcache, $jnk, $swap) =
+                split(/\s+/, $line);
+                # convert time and ampm to military
+                $time =~ /(\d+):(\d+)/;
+                $time = $1 . $2;
+                # special case for 12AM and 12PM, 12AM=0000, 12pm=1200
+                if ( $time <= 1259 && $time >= 1200 ) { $time -= 1200; }
+                if ( $ampm eq "PM" ) { $time += 1200; }
+            }
+            else {
+                ($time, $mfree, $mused, $junk, $mbuf, $mcache, $jnk, $swap) =
+                split(/\s+/, $line);
+                $time =~ /(\d+):(\d+)/;
+                $time = $1 . $2;
+            }
+            $data{$date}{$time}{mem} = ($mused - $mbuf - $mcache) / 1024.0; # in Megs
+            $data{$date}{$time}{swap} = $swap / 1024.0; # in Megs
+        }
+        close($FH);
+    }
+    else {
+        die "ERROR: Unable to determine sar -r format\n";
+    }
+
+        
     
     # get load average data
     open( $FH, "sar -q -f $log|egrep -v \"ldavg|^\$|Average|RESTART|Linux\"|" );

@@ -1,3 +1,6 @@
 0.30:
 Support for Ubuntu/logs stored in /var/log/sysstat
 Fixed parsing issues with newer versions of sysstat
+
+0.31:
+Fixed swap parsing on newer versions of sysstat
